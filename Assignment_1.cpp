@@ -1,123 +1,142 @@
-#include<bits/stdc++.h>
-using namespace std;
+#include <Adafruit_Sensor.h>
+#include <DHT.h>
+#include <ESP8266WiFi.h>
 
-void Array(int arr[],int n){
-    for(int i=0;i<n;i++){
-        cout<<arr[i]<<" ";
-    }
-    cout<<endl;
+String apiKey = "G8AFY9MGP02DG2EJ";
+const char *ssid =  "Pratham";   
+const char *pass =  "pratham2002";
+const char *server = "api.thingspeak.com";
+
+int sensor_pin =D7;
+const int SW420_PIN = D1;   // Define digital input pin for SW420 sensor
+int vibration =10;
+DHT dht(D4, DHT11);
+const int FLOAT_SENSOR_PIN = D3;
+
+
+
+int buzzer = D0;
+int smokeA0 = A0;
+
+// Your threshold value. You might need to change it.
+int sensorThres = 300;
+
+WiFiClient client;
+
+//unsigned long myChannelNumber = 2104408; //Your Channel Number (Without Brackets)
+//const char * myWriteAPIKey = "REBL81PJ40V3CJD6"; //Your Write API Key
+
+
+void setup() {
+
+  Serial.println("Connecting to ");
+  Serial.println(ssid);
+
+  WiFi.begin(ssid, pass);
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("");
+  Serial.println("WiFi connected");
+
+
+   
+  pinMode(SW420_PIN, INPUT);
+  dht.begin();
+  pinMode(sensor_pin, INPUT);
+  pinMode(FLOAT_SENSOR_PIN, OUTPUT);
+
+ pinMode(buzzer, OUTPUT);
+ pinMode(smokeA0, INPUT);
+ Serial.begin(9600);
 }
 
-void InsertionSort(int n,int arr[]){
-    int i, key, j;
-    for (i = 1; i < n; i++)
-    {
-        key = arr[i];
-        j = i - 1;
-        while (j>=0 && arr[j]>key)
-        {
-            arr[j + 1] = arr[j];
-            j--;
-        }
-        arr[j+1]=key;
-    }
-}
+void loop() {
 
-void Merge(int arr[],int l,int mid,int r){
-    int n1=mid-l+1;
-    int n2=r-mid;
-    int a[n1];
-    int b[n2];
-    for(int i=0;i<n1;i++){
-        a[i]=arr[l+i];
-    }
-    for(int i=0;i<n2;i++){
-        b[i]=arr[mid+1+i];
-    }
-    int k=l;
-    int i=0;
-    int j=0;
-    while(i<n1 && j<n2){
-        if(a[i]<b[j]){
-            arr[k]=a[i];
-            k++; i++;
-        }
-        else{
-            arr[k]=b[j];
-            k++; j++;
-        }
-    }
-    while(i<n1){
-        arr[k]=a[i];
-        k++; i++;
+vibration = digitalRead(SW420_PIN);
+ if (vibration == HIGH){
+  Serial.println("Vibration detected!");
+   digitalWrite(buzzer,HIGH);
+   tone(buzzer, 1000, 200);
 
-    }
-    while(j<n2){
-        arr[k]=b[j];
-        k++; j++;
-    }
-}
+ }
 
-void MergeSort(int arr[],int l,int r){
-    if(l<r){
-        int mid=l+(r-l)/2;
-        MergeSort(arr,l,mid);
-        MergeSort(arr,mid+1,r);
-        Merge(arr,l,mid,r);
-    }
+float humidity = dht.readHumidity();
+float temperature = dht.readTemperature();
 
-}
+if (isnan(humidity) || isnan(temperature)) {
+    Serial.println("Failed to read from DHT sensor!");
+    return;
+  }
 
-int BinarySearch(int arr[],int n){
-    int key;
-    cin>>key;
-	bool f = false;
-    int l,h,mid;
-    l = 0;
-    h = n-1;
-    mid=l+h/2;
-    while(l<=h){
-        if(key==arr[mid]){
-            cout<<mid<<endl;
-			f = true;
-            break;
-        }
-        else if(key<arr[mid]){
-            mid=mid+1;
-            l++;
-        }
-        else{
-            mid=mid-1;
-            l++;
-        }
-    }
-	if(!f){
-    cout<<"ELEMENT NOT FOUND"<<endl;
-	}
+else{
+  // Print humidity and temperature to serial monitor
+  Serial.print("Humidity: ");
+  Serial.print(humidity);
+  Serial.print("%\t");
+  Serial.print("Temperature: ");
+  Serial.print(temperature);
+  Serial.println("°C");
+  }
 
-}
 
-int main(){
-    int n;
-    cin>>n;
-    int arr[n];
-    for(int i=0;i<n;i++){
-        cin>>arr[i];
-    }
+ int analogSensor = analogRead(smokeA0);
 
-    int e;
-    cin>>e;
-    switch(e){
-    case 1:
-        MergeSort(arr,0,n-1);
-        Array(arr,n);
-    case 2:
-        InsertionSort(n,arr);
-        Array(arr,n);
-    case 3:
-        BinarySearch(arr,n);
-	default:
-		cout<<"YOU HAVE EXITED"<<endl;
-		break;
-    }
+ Serial.print("Pin A0: ");
+ Serial.println(analogSensor);
+ // Checks if it has reached the threshold value
+ if (analogSensor > sensorThres)
+ {
+   digitalWrite(buzzer,HIGH);
+   tone(buzzer, 1000, 200);
+ }
+ else
+ {
+   noTone(buzzer);
+ }
+
+  if (digitalRead(FLOAT_SENSOR_PIN )){
+    Serial.println("Manhole water level is maintained.");
+
+  }
+  else{
+      Serial.println("Manhole water level crossed threshold level");
+       digitalWrite(buzzer,HIGH);
+       tone(buzzer, 1000);
+  }
+
+
+
+
+  if (client.connect(server, 80))
+  {
+    String postStr = apiKey;
+    postStr += "&field1=";
+    postStr += String(temperature);
+    postStr += "&field2=";
+    postStr += String(humidity);
+    postStr += "\r\n\r\n";
+    postStr += "&field3=";
+    postStr += String(analogSensor);
+    postStr += "\r\n\r\n";
+
+
+    client.print("POST /update HTTP/1.1\n");
+    client.print("Host: api.thingspeak.com\n");
+    client.print("Connection: close\n");
+    client.print("X-THINGSPEAKAPIKEY: " + apiKey + "\n");
+    client.print("Content-Type: application/x-www-form-urlencoded\n");
+    client.print("Content-Length: ");
+    client.print(postStr.length());
+    client.print("\n\n");
+    client.print(postStr);
+
+  }
+
+    client.stop();
+
+
+ delay(3000);
 }

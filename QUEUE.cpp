@@ -67,6 +67,8 @@ int main(){
     //q.dequeue();
     //q.enQueue(6);
     //q.enQueue(6);
+    int n ;
+    cin>>n;
     cout<<q.peek()<<endl;
     
 }

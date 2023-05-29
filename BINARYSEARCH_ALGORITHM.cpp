@@ -20,6 +20,7 @@ int BinarySearch(int arr[],int n,int key){
 }
 
 int main(){
+    //cout<<"Hello World!"<<endl;
     int n,key;
     cin>>n;
     int arr[n];
