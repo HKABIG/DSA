@@ -1,7 +1,7 @@
 #include <bits/stdc++.h>
-using namespce std;
+using namespace std;
 
-void Swap(int a,int b){
+void Swap(int &a,int &b){
     a += b;
     b = a - b;
     a = a - b;
